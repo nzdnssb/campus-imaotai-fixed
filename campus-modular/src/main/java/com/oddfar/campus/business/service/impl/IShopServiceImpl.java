@@ -101,24 +101,31 @@ public class IShopServiceImpl extends ServiceImpl<IShopMapper, IShop> implements
             return mtSessionId;
         }
 
-        String res = HttpUtil.get("https://static.moutai519.com.cn/mt-backend/xhr/front/mall/index/session/get/" + dayTime);
-        //替换 current_session_id 673 ['data']['sessionId']
-        JSONObject jsonObject = JSONObject.parseObject(res);
+        try {
+            String res = HttpUtil.get("https://static.moutai519.com.cn/mt-backend/xhr/front/mall/index/session/get/" + dayTime);
+            //替换 current_session_id 673 ['data']['sessionId']
+            JSONObject jsonObject = JSONObject.parseObject(res);
 
-        if (jsonObject.getString("code").equals("2000")) {
-            JSONObject data = jsonObject.getJSONObject("data");
-            mtSessionId = data.getString("sessionId");
-            redisCache.setCacheObject(IMTCacheConstants.MT_SESSION_ID, mtSessionId, 2, TimeUnit.HOURS);
+            if (jsonObject != null && jsonObject.getString("code").equals("2000")) {
+                JSONObject data = jsonObject.getJSONObject("data");
+                if (data != null) {
+                    mtSessionId = data.getString("sessionId");
+                    redisCache.setCacheObject(IMTCacheConstants.MT_SESSION_ID, mtSessionId, 2, TimeUnit.HOURS);
 
-            iItemMapper.truncateItem();
-            //item插入数据库
-            JSONArray itemList = data.getJSONArray("itemList");
-            for (Object obj : itemList) {
-                JSONObject item = (JSONObject) obj;
-                IItem iItem = new IItem(item);
-                iItemMapper.insert(iItem);
+                    iItemMapper.truncateItem();
+                    //item插入数据库
+                    JSONArray itemList = data.getJSONArray("itemList");
+                    if (itemList != null) {
+                        for (Object obj : itemList) {
+                            JSONObject item = (JSONObject) obj;
+                            IItem iItem = new IItem(item);
+                            iItemMapper.insert(iItem);
+                        }
+                    }
+                }
             }
-
+        } catch (Exception e) {
+            log.error("获取SessionId失败", e);
         }
 
         return mtSessionId;
