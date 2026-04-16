@@ -85,13 +85,28 @@ public class IMTServiceImpl implements IMTService {
         if (StringUtils.isNotEmpty(mtVersion)) {
             return mtVersion;
         }
-        String url = "https://apps.apple.com/cn/app/i%E8%8C%85%E5%8F%B0/id1600482450";
-        String htmlContent = HttpUtil.get(url);
-        Pattern pattern = Pattern.compile("new__latest__version\">(.*?)</p>", Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(htmlContent);
-        if (matcher.find()) {
-            mtVersion = matcher.group(1);
-            mtVersion = mtVersion.replace("版本 ", "");
+        try {
+            String url = "https://apps.apple.com/cn/app/i%E8%8C%85%E5%8F%B0/id1600482450";
+            String htmlContent = HttpUtil.get(url);
+            // 尝试多种正则匹配
+            Pattern pattern = Pattern.compile("new__latest__version\">(.*?)</p>", Pattern.DOTALL);
+            Matcher matcher = pattern.matcher(htmlContent);
+            if (matcher.find()) {
+                mtVersion = matcher.group(1).replace("版本 ", "").trim();
+            } else {
+                // 备选正则，匹配“版本 1.9.6”这种格式
+                Pattern pattern2 = Pattern.compile("版本\\s*(\\d+\\.\\d+\\.\\d+)", Pattern.DOTALL);
+                Matcher matcher2 = pattern2.matcher(htmlContent);
+                if (matcher2.find()) {
+                    mtVersion = matcher2.group(1).trim();
+                }
+            }
+        } catch (Exception e) {
+            logger.error("获取i茅台版本号异常", e);
+        }
+
+        if (StringUtils.isEmpty(mtVersion)) {
+            mtVersion = "1.9.6"; // 默认版本号，防止获取失败导致后续请求失败
         }
         redisCache.setCacheObject(IMTCacheConstants.MT_VERSION, mtVersion);
 
@@ -120,7 +135,7 @@ public class IMTServiceImpl implements IMTService {
 
         request.header("MT-Device-ID", deviceId);
         request.header("MT-APP-Version", getMTVersion());
-        request.header("User-Agent", "iOS;16.3;Apple;?unrecognized?");
+        request.header("User-Agent", "iOS;16.6;Apple;?unrecognized?");
 
         request.header("Content-Type", "application/json");
 
@@ -132,7 +147,11 @@ public class IMTServiceImpl implements IMTService {
             return Boolean.TRUE;
         } else {
             logger.error("「发送验证码-失败」：" + jsonObject.toJSONString());
-            throw new ServiceException("发送验证码错误");
+            String message = jsonObject.getString("message");
+            if (StringUtils.isEmpty(message)) {
+                message = "发送验证码错误";
+            }
+            throw new ServiceException(message);
 //            return false;
         }
 
@@ -158,7 +177,7 @@ public class IMTServiceImpl implements IMTService {
         }
         request.header("MT-Device-ID", deviceId);
         request.header("MT-APP-Version", getMTVersion());
-        request.header("User-Agent", "iOS;16.3;Apple;?unrecognized?");
+        request.header("User-Agent", "iOS;16.6;Apple;?unrecognized?");
         request.header("Content-Type", "application/json");
 
         HttpResponse execute = request.body(JSONObject.toJSONString(map)).execute();
@@ -171,7 +190,11 @@ public class IMTServiceImpl implements IMTService {
             return true;
         } else {
             logger.error("「登录请求-失败」" + body.toJSONString());
-            throw new ServiceException("登录失败，本地错误日志已记录");
+            String message = body.getString("message");
+            if (StringUtils.isEmpty(message)) {
+                message = "登录失败，本地错误日志已记录";
+            }
+            throw new ServiceException(message);
 //            return false;
         }
 
@@ -250,7 +273,7 @@ public class IMTServiceImpl implements IMTService {
 
         request.header("MT-Device-ID", iUser.getDeviceId())
                 .header("MT-APP-Version", getMTVersion())
-                .header("User-Agent", "iOS;16.3;Apple;?unrecognized?")
+                .header("User-Agent", "iOS;16.6;Apple;?unrecognized?")
                 .header("MT-Lat", iUser.getLat())
                 .header("MT-Lng", iUser.getLng())
                 .cookie("MT-Token-Wap=" + iUser.getCookie() + ";MT-Device-ID-Wap=" + iUser.getDeviceId() + ";");
@@ -271,7 +294,7 @@ public class IMTServiceImpl implements IMTService {
 
         request.header("MT-Device-ID", iUser.getDeviceId())
                 .header("MT-APP-Version", getMTVersion())
-                .header("User-Agent", "iOS;16.3;Apple;?unrecognized?")
+                .header("User-Agent", "iOS;16.6;Apple;?unrecognized?")
                 .header("MT-Lat", iUser.getLat())
                 .header("MT-Lng", iUser.getLng())
                 .cookie("MT-Token-Wap=" + iUser.getCookie() + ";MT-Device-ID-Wap=" + iUser.getDeviceId() + ";");
@@ -293,7 +316,7 @@ public class IMTServiceImpl implements IMTService {
 
         request.header("MT-Device-ID", iUser.getDeviceId())
                 .header("MT-APP-Version", getMTVersion())
-                .header("User-Agent", "iOS;16.3;Apple;?unrecognized?")
+                .header("User-Agent", "iOS;16.6;Apple;?unrecognized?")
                 .header("MT-Lat", iUser.getLat())
                 .header("MT-Lng", iUser.getLng())
                 .cookie("MT-Token-Wap=" + iUser.getCookie() + ";MT-Device-ID-Wap=" + iUser.getDeviceId() + ";");
@@ -369,7 +392,7 @@ public class IMTServiceImpl implements IMTService {
 
         request.header("MT-Device-ID", iUser.getDeviceId())
                 .header("MT-APP-Version", getMTVersion())
-                .header("User-Agent", "iOS;16.3;Apple;?unrecognized?")
+                .header("User-Agent", "iOS;16.6;Apple;?unrecognized?")
                 .cookie("MT-Token-Wap=" + iUser.getCookie() + ";MT-Device-ID-Wap=" + iUser.getDeviceId() + ";");
         String body = request.execute().body();
         JSONObject jsonObject = JSONObject.parseObject(body);
@@ -391,7 +414,7 @@ public class IMTServiceImpl implements IMTService {
 
         request.header("MT-Device-ID", iUser.getDeviceId())
                 .header("MT-APP-Version", getMTVersion())
-                .header("User-Agent", "iOS;16.3;Apple;?unrecognized?")
+                .header("User-Agent", "iOS;16.6;Apple;?unrecognized?")
                 .cookie("MT-Token-Wap=" + iUser.getCookie() + ";MT-Device-ID-Wap=" + iUser.getDeviceId() + ";");
         String body = request.execute().body();
         JSONObject jsonObject = JSONObject.parseObject(body);
@@ -414,7 +437,7 @@ public class IMTServiceImpl implements IMTService {
 
         request.header("MT-Device-ID", iUser.getDeviceId())
                 .header("MT-APP-Version", getMTVersion())
-                .header("User-Agent", "iOS;16.3;Apple;?unrecognized?")
+                .header("User-Agent", "iOS;16.6;Apple;?unrecognized?")
                 .cookie("MT-Token-Wap=" + iUser.getCookie() + ";MT-Device-ID-Wap=" + iUser.getDeviceId() + ";");
         String body = request.form("__timestamp", DateUtil.currentSeconds()).execute().body();
 
@@ -484,7 +507,7 @@ public class IMTServiceImpl implements IMTService {
 
         request.header("MT-Device-ID", iUser.getDeviceId())
                 .header("MT-APP-Version", getMTVersion())
-                .header("User-Agent", "iOS;16.3;Apple;?unrecognized?")
+                .header("User-Agent", "iOS;16.6;Apple;?unrecognized?")
                 .cookie("MT-Token-Wap=" + iUser.getCookie() + ";MT-Device-ID-Wap=" + iUser.getDeviceId() + ";");
 
         String body = request.form("__timestamp", DateUtil.currentSeconds()).execute().body();
@@ -555,7 +578,7 @@ public class IMTServiceImpl implements IMTService {
                         .header("MT-Device-ID", iUser.getDeviceId())
                         .header("MT-APP-Version", getMTVersion())
                         .header("MT-Token", iUser.getToken())
-                        .header("User-Agent", "iOS;16.3;Apple;?unrecognized?").execute().body();
+                        .header("User-Agent", "iOS;16.6;Apple;?unrecognized?").execute().body();
                 JSONObject jsonObject = JSONObject.parseObject(body);
                 logger.info("查询申购结果回调: user->{},response->{}", iUser.getMobile(), body);
                 if (jsonObject.getInteger("code") != 2000) {
@@ -609,7 +632,7 @@ public class IMTServiceImpl implements IMTService {
         request.header("MT-Info", "028e7f96f6369cafe1d105579c5b9377");
         request.header("MT-Device-ID", iUser.getDeviceId());
         request.header("MT-APP-Version", getMTVersion());
-        request.header("User-Agent", "iOS;16.3;Apple;?unrecognized?");
+        request.header("User-Agent", "iOS;16.6;Apple;?unrecognized?");
         request.header("Content-Type", "application/json");
         request.header("userId", iUser.getUserId().toString());
 
